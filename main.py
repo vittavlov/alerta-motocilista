@@ -39,7 +39,7 @@ def conectar_banco():
             chat_id BIGINT,
             nome TEXT,
             cidade TEXT,
-            PRIMARY KEY (chat_id, city)
+            PRIMARY KEY (chat_id, cidade)
         )
     """)
     # Fallback caso dê erro de sintaxe por conta do nome da coluna
@@ -63,7 +63,7 @@ def salvar_cidade_usuario(chat_id, nome, cidade):
     try:
         try:
             cursor.execute("""
-                INSERT INTO usuarios (chat_id, nome, city) 
+                INSERT INTO usuarios (chat_id, nome, cidade) 
                 VALUES (%s, %s, %s)
                 ON CONFLICT (chat_id, city) DO NOTHING
             """, (chat_id, nome, cidade.lower()))
@@ -82,7 +82,7 @@ def salvar_cidade_usuario(chat_id, nome, cidade):
 def listar_usuarios():
     conn, cursor = conectar_banco()
     try:
-        cursor.execute("SELECT chat_id, nome, city FROM usuarios")
+        cursor.execute("SELECT chat_id, nome, cidade FROM usuarios")
     except:
         cursor.execute("SELECT chat_id, nome, cidade FROM usuarios")
     usuarios = cursor.fetchall()
