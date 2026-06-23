@@ -1,11 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 class NivelRisco(Enum):
-    SEGURO    = "✅ SEGURO"
-    ATENCAO   = "⚠️  ATENÇÃO"
-    PERIGO    = "🔴 PERIGO"
-    CRITICO   = "🚨 CRÍTICO"
+    SEGURO  = "✅ SEGURO"
+    ATENCAO = "⚠️  ATENÇÃO"
+    PERIGO  = "🔴 PERIGO"
+    CRITICO = "🚨 CRÍTICO"
 
 @dataclass
 class Alerta:
@@ -13,20 +13,15 @@ class Alerta:
     tipo: str
     mensagem: str
 
-def analisar_risco(dados: dict) -> list[Alerta]:
-    """
-    Recebe o JSON da API e retorna lista de alertas
-    específicos para quem anda de moto.
-    """
+def analisar_risco(dados: dict) -> list:
     alertas = []
 
-    clima     = dados["weather"][0]
-    condicao  = clima["main"]          # "Rain", "Thunderstorm", "Clear", "Clouds"...
-    descricao = clima["description"]   # "chuva moderada", "trovoada", "nublado"...
-
-    vento_kmh   = dados["wind"]["speed"] * 3.6   # API entrega m/s → converte
-    visibilidade = dados.get("visibility", 10000) # em metros
-    chuva_1h    = dados.get("rain", {}).get("1h", 0)  # mm na última hora
+    clima       = dados["weather"][0]
+    condicao    = clima["main"]
+    descricao   = clima["description"]
+    vento_kmh   = dados["wind"]["speed"] * 3.6
+    visibilidade = dados.get("visibility", 10000)
+    chuva_1h    = dados.get("rain", {}).get("1h", 0)
 
     # --- Chuva ---
     if condicao == "Rain":
@@ -46,7 +41,7 @@ def analisar_risco(dados: dict) -> list[Alerta]:
             alertas.append(Alerta(
                 NivelRisco.ATENCAO,
                 "GAROA",
-                "Chuva fraca — atenção ao óleo aflorado no asfalto (mais perigoso no início)."
+                "Chuva fraca — atenção ao óleo aflorado no asfalto."
             ))
 
     # --- Tempestade ---
@@ -54,19 +49,16 @@ def analisar_risco(dados: dict) -> list[Alerta]:
         alertas.append(Alerta(
             NivelRisco.CRITICO,
             "TEMPESTADE",
-            "Raios, rajadas fortes e chuva intensa. Evite sair — busque abrigo imediatamente."
+            "Raios, rajadas fortes e chuva intensa. Evite sair — busque abrigo."
         ))
 
-    # --- Céu Nublado / Encoberto ---
-    # Captura quando o tempo está fechado mas ainda não começou a chover
+    # --- Céu Nublado ---
     if condicao == "Clouds":
-        termos_nublado = ['nublado', 'encoberto', 'nuvens quebradas']
-        if any(termo in descricao.lower() for termo in termos_nublado):
-            alertas.append(Alerta(
-                NivelRisco.ATENCAO,
-                "CÉU NUBLADO",
-                f"Tempo fechado ({descricao.capitalize()}) — possibilidade de chuva a qualquer momento."
-            ))
+        alertas.append(Alerta(
+            NivelRisco.ATENCAO,
+            "CÉU NUBLADO",
+            f"Tempo fechado ({descricao.capitalize()}) — possibilidade de chuva a qualquer momento."
+        ))
 
     # --- Vento forte ---
     if vento_kmh >= 60:
@@ -96,7 +88,7 @@ def analisar_risco(dados: dict) -> list[Alerta]:
             f"Visibilidade de {visibilidade}m — reduza a velocidade."
         ))
 
-    # --- Risco de deslizamento (heurística simples) ---
+    # --- Risco de deslizamento ---
     if chuva_1h >= 30:
         alertas.append(Alerta(
             NivelRisco.CRITICO,
@@ -104,7 +96,7 @@ def analisar_risco(dados: dict) -> list[Alerta]:
             "Chuva muito intensa — evite estradas de encosta, morros e áreas de risco."
         ))
 
-    # Se nenhum risco ou aviso preventivo foi detectado
+    # --- Sem risco ---
     if not alertas:
         alertas.append(Alerta(
             NivelRisco.SEGURO,
