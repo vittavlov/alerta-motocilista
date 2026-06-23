@@ -7,6 +7,8 @@ import urllib.parse
 import telebot
 from dotenv import load_dotenv
 import schedule
+from http.server import SimpleHTTPRequestHandler
+from socketserver import TCPServer
 
 # Carrega as chaves do api.env
 load_dotenv("api.env")
@@ -33,7 +35,8 @@ def conectar_banco():
     DATABASE_URL = os.getenv("DATABASE_URL")
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    # Cria a tabela na nuvem se ela ainda não existir
+    
+    # Cria a tabela garantindo o nome correto da coluna 'cidade'
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             chat_id BIGINT,
@@ -42,39 +45,21 @@ def conectar_banco():
             PRIMARY KEY (chat_id, cidade)
         )
     """)
-    # Fallback caso dê erro de sintaxe por conta do nome da coluna
-    try:
-        conn.commit()
-    except:
-        conn.rollback()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS usuarios (
-                chat_id BIGINT,
-                nome TEXT,
-                cidade TEXT,
-                PRIMARY KEY (chat_id, cidade)
-            )
-        """)
-        conn.commit()
+    conn.commit()
     return conn, cursor
 
 def salvar_cidade_usuario(chat_id, nome, cidade):
     conn, cursor = conectar_banco()
     try:
-        try:
-            cursor.execute("""
-                INSERT INTO usuarios (chat_id, nome, cidade) 
-                VALUES (%s, %s, %s)
-                ON CONFLICT (chat_id, cidade) DO NOTHING
-            """, (chat_id, nome, cidade.lower()))
-        except:
-            conn.rollback()
-            cursor.execute("""
-                INSERT INTO usuarios (chat_id, nome, cidade) 
-                VALUES (%s, %s, %s)
-                ON CONFLICT (chat_id, cidade) DO NOTHING
-            """, (chat_id, nome, cidade.lower()))
+        cursor.execute("""
+            INSERT INTO usuarios (chat_id, nome, cidade) 
+            VALUES (%s, %s, %s)
+            ON CONFLICT (chat_id, cidade) DO NOTHING
+        """, (chat_id, nome, cidade.lower()))
         conn.commit()
+    except Exception as e:
+        print(f"Erro ao salvar cidade: {e}")
+        conn.rollback()
     finally:
         cursor.close()
         conn.close()
@@ -83,12 +68,31 @@ def listar_usuarios():
     conn, cursor = conectar_banco()
     try:
         cursor.execute("SELECT chat_id, nome, cidade FROM usuarios")
-    except:
-        cursor.execute("SELECT chat_id, nome, cidade FROM usuarios")
-    usuarios = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        usuarios = cursor.fetchall()
+    except Exception as e:
+        print(f"Erro ao listar usuários: {e}")
+        usuarios = []
+    finally:
+        cursor.close()
+        conn.close()
     return usuarios
+
+# --- SERVIDOR WEB FALSO (Para evitar o Port Scan Timeout do Render) ---
+
+def rodar_servidor_falso():
+    """Apenas abre uma porta HTTP para o Render parar de dar Timeout"""
+    porta = int(os.getenv("PORT", 8080))
+    class Handler(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Bot Online")
+            
+    TCPServer.allow_reuse_address = True
+    with TCPServer(("", porta), Handler) as server:
+        print(f"🌍 Servidor falso rodando na porta {porta} para o Render.")
+        server.serve_forever()
 
 # --- ROTINA DE NOTIFICAÇÃO ---
 def enviar_mensagem_direta(chat_id, texto):
@@ -122,7 +126,6 @@ def comando_sair(mensagem):
     
     conn, cursor = conectar_banco()
     try:
-        # Corrigido de '?' para '%s' para funcionar no PostgreSQL/Supabase
         cursor.execute("DELETE FROM usuarios WHERE chat_id = %s", (chat_id,))
         conn.commit()
     except Exception as e:
@@ -144,11 +147,10 @@ def comando_sair(mensagem):
 
 @bot.message_handler(func=lambda msg: ESTADOS_USUARIOS.get(msg.chat.id) == "aguardando_cidade")
 def capturar_cidades_sequenciais(mensagem):
-    chat_id = message_id = mensagem.chat.id
+    chat_id = mensagem.chat.id
     nome = mensagem.from_user.first_name
     texto_digitado = mensagem.text.strip()
     
-    # Ignora se o cara sem querer digitou o comando /sair na hora de escolher a cidade
     if texto_digitado.startswith('/'):
         return
 
@@ -243,8 +245,13 @@ def rodar_agendador():
 if __name__ == "__main__":
     conectar_banco()
     
+    # Thread 1: Monitoramento de Clima (Roda em background)
     thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
     thread_clima.start()
+    
+    # Thread 2: Servidor HTTP falso (Evita Port Scan Timeout no Render)
+    thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
+    thread_web.start()
     
     print("🛰️ SISTEMA ATIVO!")
     print("🤖 Bot completo com comandos /start e /sair online...")
