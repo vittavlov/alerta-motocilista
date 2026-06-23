@@ -65,7 +65,7 @@ def salvar_cidade_usuario(chat_id, nome, cidade):
             cursor.execute("""
                 INSERT INTO usuarios (chat_id, nome, cidade) 
                 VALUES (%s, %s, %s)
-                ON CONFLICT (chat_id, city) DO NOTHING
+                ON CONFLICT (chat_id, cidade) DO NOTHING
             """, (chat_id, nome, cidade.lower()))
         except:
             conn.rollback()
@@ -118,13 +118,18 @@ def comando_start(mensagem):
 @bot.message_handler(commands=['sair'])
 def comando_sair(mensagem):
     chat_id = mensagem.chat.id
-    nome = message_id = mensagem.from_user.first_name
+    nome = mensagem.from_user.first_name
     
     conn, cursor = conectar_banco()
     try:
-        cursor.execute("DELETE FROM usuarios WHERE chat_id = ?", (chat_id,))
+        # Corrigido de '?' para '%s' para funcionar no PostgreSQL/Supabase
+        cursor.execute("DELETE FROM usuarios WHERE chat_id = %s", (chat_id,))
         conn.commit()
+    except Exception as e:
+        print(f"Erro ao deletar usuário: {e}")
+        conn.rollback()
     finally:
+        cursor.close()
         conn.close()
         
     ESTADOS_USUARIOS.pop(chat_id, None)
@@ -139,7 +144,7 @@ def comando_sair(mensagem):
 
 @bot.message_handler(func=lambda msg: ESTADOS_USUARIOS.get(msg.chat.id) == "aguardando_cidade")
 def capturar_cidades_sequenciais(mensagem):
-    chat_id = mensagem.chat.id
+    chat_id = message_id = mensagem.chat.id
     nome = mensagem.from_user.first_name
     texto_digitado = mensagem.text.strip()
     
