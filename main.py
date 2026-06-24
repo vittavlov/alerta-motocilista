@@ -257,22 +257,25 @@ def rodar_agendador():
         schedule.run_pending()
         time.sleep(1)
 
+# --- AJUSTE COMPLETO FINAL DO MAIN.PY ---
+
 if __name__ == "__main__":
     conectar_banco()
-    
+
     # Thread 1: Monitoramento de Clima (Roda em background)
     thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
     thread_clima.start()
-    
+
     # Thread 2: Servidor HTTP falso (Evita Port Scan Timeout no Render)
     thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
     thread_web.start()
-    
+
     print("🛰️ SISTEMA ATIVO!")
     print("🤖 Bot completo com comandos /start e /sair online...")
-    
- print("🚀 Iniciando polling do bot...")
+    print("🚀 Iniciando polling do bot...")
 
-# timeout=60 ajuda a manter a conexão viva por mais tempo
-# long_polling_timeout=20 ajuda a evitar o erro 409
-bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
+    try:
+        # Seu polling robusto protegido contra quedas
+        bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
+    except KeyboardInterrupt:
+        print("\nDesligando o sistema...")
