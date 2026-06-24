@@ -271,12 +271,18 @@ if __name__ == "__main__":
     thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
     thread_web.start()
 
-    print("🛰️ SISTEMA ATIVO!")
+        print("🛰️ SISTEMA ATIVO!")
     print("🤖 Bot completo com comandos /start e /sair online...")
-    print("🚀 Iniciando polling do bot...")
-
+    
     try:
-        # Polling robusto protegido contra quedas
+        # Remove qualquer webhook residual e limpa mensagens antigas acumuladas
+        print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
+        bot.delete_webhook(drop_pending_updates=True)
+        
+        print("🚀 Iniciando polling do bot (Modo Resiliente)...")
+        # Polling configurado para não criar loops duplicados
         bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
+        
     except KeyboardInterrupt:
         print("\nDesligando o sistema...")
+
