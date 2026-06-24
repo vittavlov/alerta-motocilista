@@ -27,7 +27,7 @@ def salvar_novo_usuario(chat_id, nome):
 # Monitora quando alguém envia o comando /start
 @bot.message_handler(commands=['start'])
 def boas_vindas(mensagem):
-    chat_id_do_usuario = mensagem.chat.id if 'mensaje' in locals() else mensagem.chat.id
+    chat_id_do_usuario = mensagem.chat.id if 'mensagem' in locals() else mensagem.chat.id
     nome_usuario = mensagem.from_user.first_name
     
     # Agora a função existe e o erro vai sumir!
