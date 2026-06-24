@@ -18,7 +18,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # Importa as suas lógicas dos outros arquivos
-from clima   import buscar_clima, buscar_alertas_inmet
+from clima import buscar_clima, buscar_alertas_inmet_brasil
+
 from alertas import analisar_risco, NivelRisco
 
 INTERVALO_MINUTOS = 30
