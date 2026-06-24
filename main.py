@@ -180,41 +180,55 @@ def capturar_cidades_sequenciais(mensagem):
     except Exception:
         bot.send_message(chat_id, "⚠️ Não encontrei essa cidade. Verifique se digitou o nome correto e tente novamente:")
 
-# --- MOTOR DE MONITORAMENTO DE CLIMA ---
+# --- MOTOR DE MONITORAMENTO DE CLIMA INMET ---
 
 def verificar_seguranca_geral():
     global ALERTAS_NOTIFICADOS_INMET
-    usuarios = listar_usuarios()
+    usuarios = listar_usuarios()  # O seu banco deve retornar uma estrutura onde o u[1] é a cidade
     if not usuarios:
         return
 
-    print(f"\n🛰️ [RODADA DE MONITORAMENTO] Checando clima...")
+    print(f"\n🛰️ [RODADA DE MONITORAMENTO BRASIL] Checando clima...")
 
     # 1. ALERTAS INMET
     try:
-        avisos_inmet = buscar_alertas_inmet("PE")
+        # Chamamos a nova função do clima.py que busca o Brasil inteiro
+        avisos_inmet = buscar_alertas_inmet_brasil() 
+        
         if avisos_inmet and isinstance(avisos_inmet, list):
             for aviso in avisos_inmet:
-                severidade = aviso['severidade'].lower()
+                # Removemos o filtro rígido de severidade para aceitar todos os níveis (incluindo o amarelo)
                 texto_completo = (aviso['titulo'] + " " + aviso.get('descricao', '')).lower()
                 termos_perigo = ['chuva', 'tempestade', 'vento', 'vendaval', 'granizo', 'acumulado', 'nublado']
                 afeta_moto = any(termo in texto_completo for termo in termos_perigo)
-                
-                if severidade in ['perigo', 'grande perigo'] and afeta_moto:
+
+                if afeta_moto:
+                    # Pegamos a lista de cidades afetadas por este alerta específico
+                    cidades_afetadas = aviso.get('cidades', [])
                     id_alerta = aviso.get('id', aviso['titulo'])
-                    if id_alerta not in ALERTAS_NOTIFICADOS_INMET:
-                        msg_inmet = (
-                            f"🚨 [ALERTA URGENTE INMET]\n"
-                            f"📌 {aviso['titulo']}\n"
-                            f"⚠️ Severidade: {aviso['severidade']}\n"
-                            f"📅 Período: {aviso['inicio']} até {aviso['fim']}"
-                        )
-                        enviados = set()
-                        for u in usuarios:
-                            if u[0] not in enviados:
-                                enviar_mensagem_direta(u[0], msg_inmet)
-                                enviados.add(u[0])
-                        ALERTAS_NOTIFICADOS_INMET.add(id_alerta)
+
+                    # Varremos a lista de usuários cadastrados no sistema
+                    for u in usuarios:
+                        chat_id = u[0]
+                        cidade_usuario = u[1].lower().strip()  # Ex: "recife", "são paulo", "jaboatão dos guararapes"
+
+                        # Verificamos se a cidade escolhida por este usuário está dentro do alerta do INMET
+                        if cidade_usuario in cidades_afetadas:
+                            # Criamos um identificador único por usuário para controlar o envio individual
+                            chave_notificacao = f"{id_alerta}_{chat_id}"
+                            
+                            if chave_notificacao not in ALERTAS_NOTIFICADOS_INMET:
+                                msg_inmet = (
+                                    f"🚨 [ALERTA INMET - {u[1].upper()}]\n"
+                                    f"📌 {aviso['titulo']}\n"
+                                    f"⚠️ Grau: {aviso['severidade']}\n"
+                                    f"📝 {aviso.get('descricao', 'Atenção redobrada nas pistas.')}\n"
+                                    f"📅 Período: {aviso['inicio']} até {aviso['fim']}"
+                                )
+                                
+                                enviar_mensagem_direta(chat_id, msg_inmet)
+                                ALERTAS_NOTIFICADOS_INMET.add(chave_notificacao)
+                                
     except Exception as e:
         print(f"Erro no INMET: {e}")
 
