@@ -275,7 +275,7 @@ if __name__ == "__main__":
     print("🚀 Iniciando polling do bot...")
 
     try:
-        # Seu polling robusto protegido contra quedas
+        # Polling robusto protegido contra quedas
         bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
     except KeyboardInterrupt:
         print("\nDesligando o sistema...")
