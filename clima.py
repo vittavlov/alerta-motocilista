@@ -33,26 +33,33 @@ def buscar_previsao(cidade: str, pais: str = "BR") -> list:
     resposta.raise_for_status()
     return resposta.json()["list"]
 
-def buscar_alertas_inmet(estado: str = "PE") -> list:
-    """Busca alertas oficiais do INMET para o estado."""
+def buscar_alertas_inmet_brasil() -> list:
+    """Busca TODOS os alertas oficiais do INMET ativos no Brasil inteiro."""
     try:
         url = "https://apiprevmet3.inmet.gov.br/avisos/ativos"
         resposta = requests.get(url, timeout=10)
         resposta.raise_for_status()
         dados = resposta.json()
 
-        alertas_estado = []
+        todos_alertas = []
         for aviso in dados:
-            estados = aviso.get("estados", "")
-            if estado in estados:
-                alertas_estado.append({
-                    "titulo":     aviso.get("titulo", ""),
-                    "severidade": aviso.get("severidade", ""),
-                    "inicio":     aviso.get("inicio", ""),
-                    "fim":        aviso.get("fim", ""),
-                    "descricao":  aviso.get("descricao", ""),
-                })
-        return alertas_estado
+            # Captura a lista de cidades do campo 'municipios'
+            lista_municipios = aviso.get("municipios", [])
+            
+            if isinstance(lista_municipios, str):
+                cidades_limpas = [c.strip().lower() for c in lista_municipios.split(",")]
+            else:
+                cidades_limpas = [str(c).strip().lower() for c in lista_municipios]
+
+            todos_alertas.append({
+                "titulo":     aviso.get("titulo", ""),
+                "severidade": aviso.get("severidade", ""),
+                "inicio":     aviso.get("inicio", ""),
+                "fim":        aviso.get("fim", ""),
+                "descricao":  aviso.get("descricao", ""),
+                "cidades":    cidades_limpas
+            })
+        return todos_alertas
 
     except Exception as e:
         print(f"⚠️  INMET indisponível: {e}")
