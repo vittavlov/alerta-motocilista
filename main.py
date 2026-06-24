@@ -274,18 +274,23 @@ if __name__ == "__main__":
     print("🛰️ SISTEMA ATIVO!")
     print("🤖 Bot completo com comandos /start e /sair online...")
 
-    # limpeza FORA do try para garantir que ela limpe o terreno antes de ligar o polling
+    # Tudo alinhado na mesma reta vertical (4 espaços de recuo)
     print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
+    
     try:
+        # 8 espaços de recuo (dentro do try)
         bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
+        # 8 espaços de recuo (dentro do except)
         print(f"Aviso ao deletar webhook: {e}")
 
-    # iniciando o bloco principal com o recuo correto (4 espaços padrão)
     try:
+        # 8 espaços de recuo
         print("🚀 Iniciando polling do bot (Modo Resiliente)...")
         bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
     except KeyboardInterrupt:
+        # 8 espaços de recuo
         print("\nDesligando o sistema...")
+
 
 
