@@ -14,8 +14,9 @@ from socketserver import TCPServer
 load_dotenv("api.env")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-# Inicializa o bot do Telegram
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+# inicialização do bot 
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=False)
+
 
 # Importa as suas lógicas dos outros arquivos
 from clima import buscar_clima, buscar_alertas_inmet_brasil
