@@ -271,7 +271,8 @@ if __name__ == "__main__":
     print("🛰️ SISTEMA ATIVO!")
     print("🤖 Bot completo com comandos /start e /sair online...")
     
-    try:
-        bot.infinity_polling()
-    except KeyboardInterrupt:
-        print("\nDesligando o sistema...")
+ print("🚀 Iniciando polling do bot...")
+
+# timeout=60 ajuda a manter a conexão viva por mais tempo
+# long_polling_timeout=20 ajuda a evitar o erro 409
+bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
