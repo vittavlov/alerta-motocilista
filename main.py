@@ -258,38 +258,44 @@ def rodar_agendador():
         schedule.run_pending()
         time.sleep(1)
 
+# --- ADICIONE ESTA FUNÇÃO AUXILIAR LOGO ACIMA DO SEU BlOCO MAIN ---
+def inicializar_e_rodar_clima():
+    """Roda o agendador de clima de forma totalmente isolada para não travar o bot"""
+    try:
+        print("🗄️ Inicializando conexão com o banco de dados para o Clima...")
+        conectar_banco()
+        print("📅 Iniciando agendador de monitoramento de clima...")
+        rodar_agendador()
+    except Exception as e:
+        print(f"💥 Erro crítico ao rodar o agendador de clima/banco: {e}")
+
+# --- SUBSTITUA O SEU BLOCO PRINCIPAL POR ESTE ---
 if __name__ == "__main__":
-    conectar_banco()
-
-    # Threads de Background ativas
-    thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
-    thread_clima.start()
-
+    # 1. Thread do Servidor Falso (Mantém o Render feliz)
     thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
     thread_web.start()
 
-    print("🛰️ SISTEMA ATIVO!")
-    print("🤖 Bot completo online...")
+    # 2. Thread do Clima + Banco (Se o banco cair ou travar, fica isolado aqui!)
+    thread_clima = threading.Thread(target=inicializar_e_rodar_clima, daemon=True)
+    thread_clima.start()
 
-    # Loop Infinito de Auto-Recuperação
+    print("🛰️ SISTEMA ATIVO!")
+    print("🤖 Bot completo online e isolado de falhas externas...")
+
+    # 3. MainThread dedicada EXCLUSIVAMENTE ao funcionamento do Bot
     while True:
         try:
             print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
             bot.delete_webhook(drop_pending_updates=True)
-            time.sleep(1) # Pequena pausa para o Telegram processar a limpeza
+            time.sleep(1)
             
-            print("🚀 Iniciando polling do bot (Modo Resiliente)...")
-            # Reduzimos o long_polling_timeout para evitar o estouro de limite do Render
+            print("🚀 Iniciando polling do bot (Modo Resiliente Dedicado)...")
             bot.infinity_polling(timeout=20, long_polling_timeout=5, restart_on_change=False)
             
         except Exception as e:
-            print(f"⚠️ Ocorreu uma falha no Polling: {e}")
-            print("🔄 Aguardando 5 segundos antes de reiniciar o bot automaticamente...")
+            print(f"⚠️ Ocorreu uma falha isolada no Polling: {e}")
+            print("🔄 Reiniciando a escuta do bot em 5 segundos...")
             time.sleep(5)
         except KeyboardInterrupt:
             print("\nDesligando o sistema de forma segura...")
             break
-
-
-
-
