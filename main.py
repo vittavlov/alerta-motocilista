@@ -6,10 +6,15 @@ import urllib.parse
 import telebot
 from dotenv import load_dotenv
 import schedule
+from flask import Flask, request
 
+# --- CONFIGURAÇÃO INICIAL ---
 load_dotenv("api.env")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=False)
+
+# Inicializa o Flask para o Webhook e o Cron-Job
+app = Flask(__name__)
 
 from clima import buscar_clima, buscar_alertas_inmet_brasil
 from alertas import analisar_risco, NivelRisco
@@ -80,14 +85,15 @@ def enviar_mensagem_direta(chat_id, texto):
 
 @bot.message_handler(commands=['start'])
 def comando_start(mensagem):
-    chat_id = mensagem.chat.id
-    nome = mensagem.from_user.first_name
+    chat_id = message.chat.id if hasattr(mensagem, 'chat') else mensagem.chat_id
+    nome = mensagem.from_user.first_name if hasattr(mensagem, 'from_user') else "Piloto"
+    
     ESTADOS_USUARIOS[chat_id] = "aguardando_cidade"
     resposta = (
         f"🏍️ Olá, {nome}! Bem-vindo ao Alerta Motociclista.\n\n"
         f"Digite o nome da primeira cidade que deseja monitorar:"
     )
-    bot.send_message(chat_id, resposta)
+    bot.send_message(chat_id, respuesta)
 
 @bot.message_handler(commands=['sair'])
 def comando_sair(mensagem):
@@ -190,15 +196,32 @@ def rodar_agendador():
         schedule.run_pending()
         time.sleep(1)
 
+# --- ROTAS WEBHOOK E CRON-JOB ---
+
+@app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
+def receber_updates():
+    """Recebe as mensagens enviadas pelo Telegram"""
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+@app.route('/')
+def index():
+    """Rota leve para o Cron-Job.org ler e manter o Render acordado"""
+    return "OK", 200
+
 # --- INÍCIO ---
 
+# Garante a criação do banco de dados e a inicialização da thread antes do Flask rodar
+print("🗄️ Conectando ao banco...")
+conectar_banco()
+
+print("📅 Iniciando agendador em background...")
+thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
+thread_clima.start()
+
+# O bloco principal executa o servidor Flask localmente se rodar direto
 if __name__ == "__main__":
-    print("🗄️ Conectando ao banco...")
-    conectar_banco()
-
-    print("📅 Iniciando agendador em background...")
-    thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
-    thread_clima.start()
-
-    print("🤖 Bot iniciado em modo polling...")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
