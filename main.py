@@ -258,39 +258,38 @@ def rodar_agendador():
         schedule.run_pending()
         time.sleep(1)
 
-# --- AJUSTE COMPLETO FINAL DO MAIN.PY ---
-
 if __name__ == "__main__":
     conectar_banco()
 
-    # Thread 1: Monitoramento de Clima (Roda em background)
+    # Threads de Background ativas
     thread_clima = threading.Thread(target=rodar_agendador, daemon=True)
     thread_clima.start()
 
-    # Thread 2: Servidor HTTP falso (Evita Port Scan Timeout no Render)
     thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
     thread_web.start()
 
     print("🛰️ SISTEMA ATIVO!")
-    print("🤖 Bot completo com comandos /start e /sair online...")
+    print("🤖 Bot completo online...")
 
-    # Tudo alinhado na mesma reta vertical (4 espaços de recuo)
-    print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
-    
-    try:
-        # 8 espaços de recuo (dentro do try)
-        bot.delete_webhook(drop_pending_updates=True)
-    except Exception as e:
-        # 8 espaços de recuo (dentro do except)
-        print(f"Aviso ao deletar webhook: {e}")
+    # Loop Infinito de Auto-Recuperação
+    while True:
+        try:
+            print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
+            bot.delete_webhook(drop_pending_updates=True)
+            time.sleep(1) # Pequena pausa para o Telegram processar a limpeza
+            
+            print("🚀 Iniciando polling do bot (Modo Resiliente)...")
+            # Reduzimos o long_polling_timeout para evitar o estouro de limite do Render
+            bot.infinity_polling(timeout=20, long_polling_timeout=5, restart_on_change=False)
+            
+        except Exception as e:
+            print(f"⚠️ Ocorreu uma falha no Polling: {e}")
+            print("🔄 Aguardando 5 segundos antes de reiniciar o bot automaticamente...")
+            time.sleep(5)
+        except KeyboardInterrupt:
+            print("\nDesligando o sistema de forma segura...")
+            break
 
-    try:
-        # 8 espaços de recuo
-        print("🚀 Iniciando polling do bot (Modo Resiliente)...")
-        bot.infinity_polling(timeout=60, long_polling_timeout=20, restart_on_change=False)
-    except KeyboardInterrupt:
-        # 8 espaços de recuo
-        print("\nDesligando o sistema...")
 
 
 
