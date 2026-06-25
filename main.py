@@ -7,17 +7,19 @@ import urllib.parse
 import telebot
 from dotenv import load_dotenv
 import schedule
-
-# Adicione os novos imports do Flask aqui no topo!
 from flask import Flask, request
 
-# ... resto das suas configurações (load_dotenv, token, etc.) ...
+# 1. Primeiro você lê o arquivo api.env para carregar as chaves
+load_dotenv("api.env")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+# 2. Agora que o TELEGRAM_TOKEN existe, você inicializa o Bot
 bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=False)
 
-# Instancia o Flask já aqui no escopo global
+# 3. Inicializa o Flask
 app = Flask(__name__)
 
-# Importa as suas lógicas dos outros arquivos
+# 4. Importa as suas lógicas dos outros arquivos
 from clima import buscar_clima, buscar_alertas_inmet_brasil
 
 from alertas import analisar_risco, NivelRisco
