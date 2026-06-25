@@ -269,33 +269,63 @@ def inicializar_e_rodar_clima():
     except Exception as e:
         print(f"💥 Erro crítico ao rodar o agendador de clima/banco: {e}")
 
-# --- SUBSTITUA O SEU BLOCO PRINCIPAL POR ESTE ---
-if __name__ == "__main__":
-    # 1. Thread do Servidor Falso (Mantém o Render feliz)
-    thread_web = threading.Thread(target=rodar_servidor_falso, daemon=True)
-    thread_web.start()
+from flask import Flask, request
+import os
+import telebot
+import threading
 
-    # 2. Thread do Clima + Banco (Se o banco cair ou travar, fica isolado aqui!)
+# Instancia o Flask (Ele vai substituir aquele servidor falso antigo)
+app = Flask(__name__)
+
+# O Render vai enviar os webhooks para este endereço final
+@app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
+def receber_updates():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        return 'Incorreto', 403
+
+# Rota simples na raiz para o Render saber que o app está vivo (Health Check)
+@app.route('/', methods=['GET'])
+def index():
+    return "Bot de Clima Operando via Webhook!", 200
+
+def inicializar_e_rodar_clima():
+    """Roda o agendador de clima de forma totalmente isolada em background"""
+    try:
+        print("🗄️ Conectando ao banco de dados...")
+        conectar_banco()
+        print("📅 Iniciando agendador de monitoramento de clima...")
+        rodar_agendador()
+    except Exception as e:
+        print(f"💥 Erro no agendador de clima: {e}")
+
+if __name__ == "__main__":
+    # 1. Dispara a thread do Clima em segundo plano
     thread_clima = threading.Thread(target=inicializar_e_rodar_clima, daemon=True)
     thread_clima.start()
 
-    print("🛰️ SISTEMA ATIVO!")
-    print("🤖 Bot completo online e isolado de falhas externas...")
+    # 2. Configura o Webhook no Telegram apontando para o seu link do Render
+    # O Render gera automaticamente a URL do seu app na variável RENDER_EXTERNAL_URL
+    RENDER_URL = os.getenv("RENDER_EXTERNAL_URL")
+    
+    if RENDER_URL:
+        # Garante que a URL termine sem barra antes de juntar com o Token
+        RENDER_URL = RENDER_URL.rstrip('/')
+        WEBHOOK_URL = f"{RENDER_URL}/{TELEGRAM_TOKEN}"
+        
+        print(f"🧹 Removendo webhooks antigos e configurando novo: {WEBHOOK_URL}")
+        bot.remove_webhook()
+        bot.set_webhook(url=WEBHOOK_URL)
+    else:
+        print("⚠️ RENDER_EXTERNAL_URL não encontrada. Certifique-se de que está rodando no Render.")
 
-    # 3. MainThread dedicada EXCLUSIVAMENTE ao funcionamento do Bot
-    while True:
-        try:
-            print("🧹 Limpando conexões e atualizações pendentes no Telegram...")
-            bot.delete_webhook(drop_pending_updates=True)
-            time.sleep(1)
-            
-            print("🚀 Iniciando polling do bot (Modo Resiliente Dedicado)...")
-            bot.infinity_polling(timeout=20, long_polling_timeout=5, restart_on_change=False)
-            
-        except Exception as e:
-            print(f"⚠️ Ocorreu uma falha isolada no Polling: {e}")
-            print("🔄 Reiniciando a escuta do bot em 5 segundos...")
-            time.sleep(5)
-        except KeyboardInterrupt:
-            print("\nDesligando o sistema de forma segura...")
-            break
+    # 3. Liga o servidor Flask na porta que o Render exige
+    PORTA = int(os.getenv("PORT", 8080))
+    print(f"🚀 Servidor Webhook ativo de forma nativa na porta {PORTA}!")
+    
+    # Roda o servidor Flask de forma limpa (substitui o infinity_polling e o servidor falso antigo)
+    app.run(host="0.0.0.0", port=PORTA)
