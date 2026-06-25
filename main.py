@@ -294,6 +294,9 @@ def index():
 
 def inicializar_e_rodar_clima():
     """Roda o agendador de clima de forma totalmente isolada em background"""
+
+def inicializar_e_rodar_clima():
+    """Roda o agendador de clima de forma totalmente isolada em background"""
     try:
         print("🗄️ Conectando ao banco de dados...")
         conectar_banco()
@@ -302,17 +305,33 @@ def inicializar_e_rodar_clima():
     except Exception as e:
         print(f"💥 Erro no agendador de clima: {e}")
 
+# --- ROTAS DO FLASK ---
+
+@app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
+def receber_updates():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        return 'Incorreto', 403
+
+@app.route('/', methods=['GET'])
+def index():
+    return "Bot de Clima Operando via Webhook!", 200
+
+# --- BLOCO PRINCIPAL ---
+
 if __name__ == "__main__":
     # 1. Dispara a thread do Clima em segundo plano
     thread_clima = threading.Thread(target=inicializar_e_rodar_clima, daemon=True)
     thread_clima.start()
 
     # 2. Configura o Webhook no Telegram apontando para o seu link do Render
-    # O Render gera automaticamente a URL do seu app na variável RENDER_EXTERNAL_URL
     RENDER_URL = os.getenv("RENDER_EXTERNAL_URL")
     
     if RENDER_URL:
-        # Garante que a URL termine sem barra antes de juntar com o Token
         RENDER_URL = RENDER_URL.rstrip('/')
         WEBHOOK_URL = f"{RENDER_URL}/{TELEGRAM_TOKEN}"
         
@@ -320,11 +339,10 @@ if __name__ == "__main__":
         bot.remove_webhook()
         bot.set_webhook(url=WEBHOOK_URL)
     else:
-        print("⚠️ RENDER_EXTERNAL_URL não encontrada. Certifique-se de que está rodando no Render.")
+        print("⚠️ RENDER_EXTERNAL_URL não encontrada.")
 
     # 3. Liga o servidor Flask na porta que o Render exige
     PORTA = int(os.getenv("PORT", 8080))
     print(f"🚀 Servidor Webhook ativo de forma nativa na porta {PORTA}!")
     
-    # Roda o servidor Flask de forma limpa (substitui o infinity_polling e o servidor falso antigo)
     app.run(host="0.0.0.0", port=PORTA)
