@@ -4,4 +4,4 @@ schedule
 psycopg2-binary
 flask
 requests
-
+gunicorn
