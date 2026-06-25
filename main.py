@@ -278,17 +278,6 @@ import threading
 # Instancia o Flask (Ele vai substituir aquele servidor falso antigo)
 app = Flask(__name__)
 
-# O Render vai enviar os webhooks para este endereço final
-@app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
-def receber_updates():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return '', 200
-    else:
-        return 'Incorreto', 403
-
 # Rota simples na raiz para o Render saber que o app está vivo (Health Check)
 @app.route('/', methods=['GET'])
 def index():
