@@ -7,8 +7,15 @@ import urllib.parse
 import telebot
 from dotenv import load_dotenv
 import schedule
-from http.server import SimpleHTTPRequestHandler
-from socketserver import TCPServer
+
+# Adicione os novos imports do Flask aqui no topo!
+from flask import Flask, request
+
+# ... resto das suas configurações (load_dotenv, token, etc.) ...
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=False)
+
+# Instancia o Flask já aqui no escopo global
+app = Flask(__name__)
 
 # Carrega as chaves do api.env
 load_dotenv("api.env")
