@@ -16,8 +16,8 @@ schedule==1.2.2
 typing_extensions==4.15.0
 urllib3==2.7.0
 yarl==1.24.2
-16 typing_extensions==4.15.0
-17 urllib3==2.7.0
-18 yarl==1.2.4.2
-19 flask
+typing_extensions==4.15.0
+urllib3==2.7.0
+yarl==1.2.4.2
+flask
 
