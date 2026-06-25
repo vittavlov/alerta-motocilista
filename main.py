@@ -259,33 +259,6 @@ def rodar_agendador():
         schedule.run_pending()
         time.sleep(1)
 
-# --- ADICIONE ESTA FUNÇÃO AUXILIAR LOGO ACIMA DO SEU BlOCO MAIN ---
-def inicializar_e_rodar_clima():
-    """Roda o agendador de clima de forma totalmente isolada para não travar o bot"""
-    try:
-        print("🗄️ Inicializando conexão com o banco de dados para o Clima...")
-        conectar_banco()
-        print("📅 Iniciando agendador de monitoramento de clima...")
-        rodar_agendador()
-    except Exception as e:
-        print(f"💥 Erro crítico ao rodar o agendador de clima/banco: {e}")
-
-from flask import Flask, request
-import os
-import telebot
-import threading
-
-# Instancia o Flask (Ele vai substituir aquele servidor falso antigo)
-app = Flask(__name__)
-
-# Rota simples na raiz para o Render saber que o app está vivo (Health Check)
-@app.route('/', methods=['GET'])
-def index():
-    return "Bot de Clima Operando via Webhook!", 200
-
-def inicializar_e_rodar_clima():
-    """Roda o agendador de clima de forma totalmente isolada em background"""
-
 def inicializar_e_rodar_clima():
     """Roda o agendador de clima de forma totalmente isolada em background"""
     try:
